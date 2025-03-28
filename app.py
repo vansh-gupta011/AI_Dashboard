@@ -21,12 +21,13 @@ st.sidebar.header("Upload CSV File")
 
 uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=["csv"])
 
-# User Query Input (Moved outside the if-block)
+# User Query Input
 user_query = st.text_input("💬 Type your query (e.g., 'Show me data for China and India from 2001 to 2015.')")
 
 def parse_query_with_openai(query):
-    """Parses the user query using OpenAI's GPT model."""
-    chat = ChatOpenAI(openai_api_key=OPENAI_API_KEY)
+    """Parses the user query using OpenAI's GPT-4o-mini model."""
+    chat = ChatOpenAI(model_name="gpt-4o-mini", openai_api_key=OPENAI_API_KEY)
+    
     system_message = SystemMessage(content="""
         You are an AI assistant that extracts country names and year ranges from user queries related to population data.
         Input: 'Show me data for China and India from 2001 to 2015.'
@@ -34,10 +35,10 @@ def parse_query_with_openai(query):
         
         If no years are specified, return None for start_year and end_year.
     """)
+    
     response = chat([system_message, HumanMessage(content=query)])
     return json.loads(response.content) if response else {}
 
-# Ensure the DataFrame is loaded only if the file exists
 if uploaded_file:
     file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
 
@@ -56,7 +57,6 @@ if uploaded_file:
         else:
             st.error("❌ Error processing file.")
 
-    # Load the JSON data safely
     try:
         with open("files.json", "r") as file:
             data = json.load(file)
@@ -65,12 +65,10 @@ if uploaded_file:
         st.error("❌ Error: 'files.json' not found. Please upload and process a CSV file first.")
         st.stop()
 
-    # Convert population columns to numeric
     year_columns = [col for col in df.columns if col.isdigit()]
     df[year_columns] = df[year_columns].apply(pd.to_numeric, errors='coerce')
     df["Mean Population"] = df[year_columns].mean(axis=1) / 1e9
 
-# Process user query only if it exists
 if user_query:
     parsed_data = parse_query_with_openai(user_query)
     
